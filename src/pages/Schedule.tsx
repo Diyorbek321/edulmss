@@ -17,6 +17,7 @@ import {
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { Modal } from '@/src/components/Modal';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 const days = [
   { name: 'DUSHANBA', date: '16' },
@@ -51,6 +52,8 @@ const roomOccupancy = [
 ];
 
 export const Schedule = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Dars jadvali');
@@ -90,22 +93,24 @@ export const Schedule = () => {
               <Download size={18} />
               <span>Export</span>
             </button>
-            {activeTab === 'Dars jadvali' ? (
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
-              >
-                <Plus size={18} />
-                <span>+ Dars qo'shish</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => setIsRoomModalOpen(true)}
-                className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
-              >
-                <Plus size={18} />
-                <span>+ Xona qo'shish</span>
-              </button>
+            {isAdmin && (
+              activeTab === 'Dars jadvali' ? (
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
+                >
+                  <Plus size={18} />
+                  <span>+ Dars qo'shish</span>
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsRoomModalOpen(true)}
+                  className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
+                >
+                  <Plus size={18} />
+                  <span>+ Xona qo'shish</span>
+                </button>
+              )
             )}
           </div>
         </div>

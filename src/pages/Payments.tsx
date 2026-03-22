@@ -22,6 +22,7 @@ import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { Modal } from '@/src/components/Modal';
 import { exportToCSV } from '@/src/lib/exportUtils';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 const stats = [
   { label: 'Umumiy tushum', value: '124,500,000', trend: '+12.5%', icon: Wallet, color: 'bg-emerald-100 text-emerald-600' },
@@ -39,6 +40,8 @@ const payments = [
 
 export const Payments = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -58,13 +61,15 @@ export const Payments = () => {
               <Download size={18} />
               <span>Hisobot yuklash</span>
             </button>
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
-            >
-              <Plus size={18} />
-              <span>Yangi to'lov</span>
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
+              >
+                <Plus size={18} />
+                <span>Yangi to'lov</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -20,6 +20,7 @@ import {
 } from 'recharts';
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 const data = [
   { name: '1 May', value: 150 },
@@ -81,6 +82,8 @@ const debtors = [
 import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const navigate = useNavigate();
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -88,163 +91,171 @@ export const Dashboard = () => {
       
       <main className="flex-1 overflow-y-auto p-8 space-y-8 max-w-[1440px] mx-auto w-full">
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {kpis.map((kpi, i) => (
-            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className={cn("p-2 rounded-xl", kpi.color)}>
-                  <kpi.icon size={24} />
+        {isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {kpis.map((kpi, i) => (
+              <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={cn("p-2 rounded-xl", kpi.color)}>
+                    <kpi.icon size={24} />
+                  </div>
+                  <span className={cn(
+                    "text-xs font-bold flex items-center gap-0.5 px-2 py-1 rounded-lg",
+                    kpi.trend.includes('+') ? "text-emerald-500 bg-emerald-50" : "text-red-500 bg-red-50"
+                  )}>
+                    {kpi.trend.includes('+') && <TrendingUp size={12} />}
+                    {kpi.trend}
+                  </span>
                 </div>
-                <span className={cn(
-                  "text-xs font-bold flex items-center gap-0.5 px-2 py-1 rounded-lg",
-                  kpi.trend.includes('+') ? "text-emerald-500 bg-emerald-50" : "text-red-500 bg-red-50"
-                )}>
-                  {kpi.trend.includes('+') && <TrendingUp size={12} />}
-                  {kpi.trend}
-                </span>
+                <p className="text-sm text-slate-500 font-bold">{kpi.label}</p>
+                <h3 className="text-2xl font-black mt-1 text-slate-900">
+                  {kpi.value} <span className="text-sm font-normal text-slate-400">{kpi.unit}</span>
+                </h3>
               </div>
-              <p className="text-sm text-slate-500 font-bold">{kpi.label}</p>
-              <h3 className="text-2xl font-black mt-1 text-slate-900">
-                {kpi.value} <span className="text-sm font-normal text-slate-400">{kpi.unit}</span>
-              </h3>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Chart Area */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Tushum (Oxirgi 30 kun)</h2>
-                  <p className="text-sm text-slate-500">Umumiy moliyaviy o'sish ko'rsatkichi</p>
+            {isAdmin && (
+              <>
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Tushum (Oxirgi 30 kun)</h2>
+                      <p className="text-sm text-slate-500">Umumiy moliyaviy o'sish ko'rsatkichi</p>
+                    </div>
+                    <select className="bg-slate-100 border-none rounded-xl text-xs font-bold py-2 px-4 outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer">
+                      <option>Oxirgi 30 kun</option>
+                      <option>Oxirgi 7 kun</option>
+                    </select>
+                  </div>
+                  
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={data}>
+                        <defs>
+                          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ec5b13" stopOpacity={0.1}/>
+                            <stop offset="95%" stopColor="#ec5b13" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }}
+                          dy={10}
+                        />
+                        <YAxis hide />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="value" 
+                          stroke="#ec5b13" 
+                          strokeWidth={3}
+                          fillOpacity={1} 
+                          fill="url(#colorValue)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <select className="bg-slate-100 border-none rounded-xl text-xs font-bold py-2 px-4 outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer">
-                  <option>Oxirgi 30 kun</option>
-                  <option>Oxirgi 7 kun</option>
-                </select>
-              </div>
-              
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ec5b13" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#ec5b13" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }}
-                      dy={10}
-                    />
-                    <YAxis hide />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#ec5b13" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorValue)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* Transactions Table */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Oxirgi tranzaksiyalar</h2>
-                <button className="text-[#ec5b13] text-sm font-bold hover:underline flex items-center gap-1">
-                  Hammasini ko'rish <ArrowRight size={14} />
-                </button>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">O‘quvchi</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Summa</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">To'lov turi</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Sana</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Holati</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {transactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
-                        <td className="px-6 py-4">
-                          <button 
-                            onClick={() => navigate(`/students/${t.id}`)}
-                            className="flex items-center gap-3 text-left hover:text-[#ec5b13] transition-colors"
-                          >
-                            <img className="size-9 rounded-full border border-slate-200 object-cover" src={t.avatar} alt={t.name} />
-                            <span className="font-bold text-sm text-slate-700 group-hover:text-[#ec5b13]">{t.name}</span>
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-sm font-black text-slate-900">{t.amount} UZS</td>
-                        <td className="px-6 py-4">
-                          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">{t.type}</span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-500 font-medium">{t.date}</td>
-                        <td className="px-6 py-4">
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                            t.status === 'Muvaffaqiyatli' ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
-                          )}>
-                            {t.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                {/* Transactions Table */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-slate-900">Oxirgi tranzaksiyalar</h2>
+                    <button className="text-[#ec5b13] text-sm font-bold hover:underline flex items-center gap-1">
+                      Hammasini ko'rish <ArrowRight size={14} />
+                    </button>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-100">
+                        <tr>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">O‘quvchi</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Summa</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">To'lov turi</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Sana</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Holati</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {transactions.map((t) => (
+                          <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
+                            <td className="px-6 py-4">
+                              <button 
+                                onClick={() => navigate(`/students/${t.id}`)}
+                                className="flex items-center gap-3 text-left hover:text-[#ec5b13] transition-colors"
+                              >
+                                <img className="size-9 rounded-full border border-slate-200 object-cover" src={t.avatar} alt={t.name} />
+                                <span className="font-bold text-sm text-slate-700 group-hover:text-[#ec5b13]">{t.name}</span>
+                              </button>
+                            </td>
+                            <td className="px-6 py-4 text-sm font-black text-slate-900">{t.amount} UZS</td>
+                            <td className="px-6 py-4">
+                              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">{t.type}</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500 font-medium">{t.date}</td>
+                            <td className="px-6 py-4">
+                              <span className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                t.status === 'Muvaffaqiyatli' ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
+                              )}>
+                                {t.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Side Panel */}
           <div className="space-y-8">
             {/* Debtors List */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <AlertTriangle size={20} className="text-red-500" />
-                  Qarzdorlar ro'yxati
-                </h2>
-                <button className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
-                  <MoreVertical size={18} className="text-slate-500" />
+            {isAdmin && (
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <AlertTriangle size={20} className="text-red-500" />
+                    Qarzdorlar ro'yxati
+                  </h2>
+                  <button className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
+                    <MoreVertical size={18} className="text-slate-500" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {debtors.map((debtor, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all group">
+                      <div className="flex items-center gap-3">
+                        <img className="size-11 rounded-xl object-cover shadow-sm" src={debtor.avatar} alt={debtor.name} />
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">{debtor.name}</h4>
+                          <p className="text-xs text-red-500 font-black">{debtor.amount} UZS</p>
+                        </div>
+                      </div>
+                      <button className="p-2 text-[#ec5b13] bg-orange-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-[#ec5b13] hover:text-white shadow-sm" title="Xabarnoma yuborish">
+                        <Send size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button className="w-full mt-6 py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-sm font-bold hover:bg-slate-50 hover:border-[#ec5b13]/30 hover:text-[#ec5b13] transition-all">
+                  Hammani ko'rish
                 </button>
               </div>
-              <div className="space-y-4">
-                {debtors.map((debtor, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all group">
-                    <div className="flex items-center gap-3">
-                      <img className="size-11 rounded-xl object-cover shadow-sm" src={debtor.avatar} alt={debtor.name} />
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900">{debtor.name}</h4>
-                        <p className="text-xs text-red-500 font-black">{debtor.amount} UZS</p>
-                      </div>
-                    </div>
-                    <button className="p-2 text-[#ec5b13] bg-orange-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-[#ec5b13] hover:text-white shadow-sm" title="Xabarnoma yuborish">
-                      <Send size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full mt-6 py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-sm font-bold hover:bg-slate-50 hover:border-[#ec5b13]/30 hover:text-[#ec5b13] transition-all">
-                Hammani ko'rish
-              </button>
-            </div>
+            )}
 
             {/* Quick Stats / Today's Lessons Preview */}
             <div className="bg-slate-900 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden">

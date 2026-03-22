@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   MessageSquare, 
   Search, 
@@ -38,6 +39,7 @@ const initialTemplates: SMSTemplate[] = [
 ];
 
 export const SMS = () => {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('Yangi xabar');
   const [history, setHistory] = useState<SMSHistory[]>(initialHistory);
   const [templates, setTemplates] = useState<SMSTemplate[]>(initialTemplates);
@@ -50,15 +52,41 @@ export const SMS = () => {
     message: ''
   });
 
+  useEffect(() => {
+    const phone = searchParams.get('phone');
+    const name = searchParams.get('name');
+    
+    if (phone || name) {
+      setFormData(prev => ({
+        ...prev,
+        recipientType: 'individual',
+        recipient: name ? `${name} (${phone})` : phone || ''
+      }));
+      setActiveTab('Yangi xabar');
+    }
+  }, [searchParams]);
+
   const handleSendSMS = () => {
     if (!formData.message) return;
+
+    let phoneStr = '+998 XX XXX XX XX';
+    if (formData.recipientType === 'individual') {
+      const match = formData.recipient.match(/\(([^)]+)\)/);
+      if (match) {
+        phoneStr = match[1];
+      } else if (formData.recipient.includes('+')) {
+        phoneStr = formData.recipient;
+      }
+    } else {
+      phoneStr = 'Ko\'p';
+    }
 
     const newSMS: SMSHistory = {
       id: Math.random().toString(),
       recipient: formData.recipientType === 'all' ? 'Barcha o\'quvchilar' : 
                  formData.recipientType === 'debtors' ? 'Barcha qarzdorlar' : 
-                 formData.recipient || 'Noma\'lum',
-      phone: formData.recipientType === 'individual' ? '+998 XX XXX XX XX' : 'Ko\'p',
+                 formData.recipient.replace(/\s*\([^)]+\)/, '') || 'Noma\'lum',
+      phone: phoneStr,
       message: formData.message,
       type: formData.type as any,
       status: 'Yuborildi',

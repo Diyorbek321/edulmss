@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -23,19 +23,20 @@ import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { Teacher } from '@/src/types';
 import { Modal } from '@/src/components/Modal';
-
 import { useNavigate } from 'react-router-dom';
-
-const teachers: Teacher[] = [
-  { id: '1', name: 'Alisher Navoiy', phone: '+998 90 123 45 67', specialty: 'Matematika', groupsCount: 4, status: 'Faol', hours: 120, studentsCount: 65, rating: 4.9, salary: 4500000, hourlyRate: 35000, bonus: 500000 },
-  { id: '2', name: 'Malika Ahmedova', phone: '+998 93 456 78 90', specialty: 'Ingliz tili (IELTS)', groupsCount: 3, status: 'Faol', hours: 90, studentsCount: 42, rating: 4.8, salary: 3800000, hourlyRate: 40000, bonus: 200000 },
-  { id: '3', name: 'Bobur Mirzo', phone: '+998 97 777 00 11', specialty: 'Web Development', groupsCount: 2, status: 'Faol', hours: 60, studentsCount: 30, rating: 5.0, salary: 5000000, hourlyRate: 50000, bonus: 0 },
-  { id: '4', name: 'Zuhra Karimo', phone: '+998 99 888 22 33', specialty: 'Rus tili', groupsCount: 5, status: 'Nofaol', hours: 0, studentsCount: 0, rating: 4.5, salary: 0, hourlyRate: 30000, bonus: 0 },
-];
+import { api } from '@/src/lib/api';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 export const Teachers = () => {
   const navigate = useNavigate();
-  const [teacherList, setTeacherList] = useState<Teacher[]>(teachers);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  const [teacherList, setTeacherList] = useState<Teacher[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
@@ -54,9 +55,39 @@ export const Teachers = () => {
     password: ''
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fetchTeachers = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get('/teachers', {
+        params: { search: searchQuery }
+      });
+      setTeacherList(response.data);
+    } catch (err) {
+      setError("O'qituvchilarni yuklashda xatolik yuz berdi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeachers();
+  }, [searchQuery]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && editingTeacher) {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      try {
+        const response = await api.post(`/teachers/${editingTeacher.id}/avatar`, uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        setFormData(prev => ({ ...prev, avatar: response.data.avatar_url || response.data.url }));
+      } catch (err) {
+        console.error("Rasm yuklashda xatolik");
+      }
+    } else if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, avatar: reader.result as string }));
@@ -104,29 +135,32 @@ export const Teachers = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (teacherToDelete) {
-      setTeacherList(prev => prev.filter(t => t.id !== teacherToDelete.id));
-      setIsDeleteModalOpen(false);
-      setTeacherToDelete(null);
+      try {
+        await api.delete(`/teachers/${teacherToDelete.id}`);
+        setTeacherList(prev => prev.filter(t => t.id !== teacherToDelete.id));
+        setIsDeleteModalOpen(false);
+        setTeacherToDelete(null);
+      } catch (err) {
+        console.error("O'chirishda xatolik");
+      }
     }
   };
 
-  const handleSave = () => {
-    if (editingTeacher) {
-      setTeacherList(prev => prev.map(t => t.id === editingTeacher.id ? { ...t, ...formData } : t));
-    } else {
-      const newTeacher: Teacher = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-        groupsCount: 0,
-        hours: 0,
-        studentsCount: 0,
-        rating: 0
-      };
-      setTeacherList(prev => [...prev, newTeacher]);
+  const handleSave = async () => {
+    try {
+      if (editingTeacher) {
+        const response = await api.put(`/teachers/${editingTeacher.id}`, formData);
+        setTeacherList(prev => prev.map(t => t.id === editingTeacher.id ? response.data : t));
+      } else {
+        const response = await api.post('/teachers', formData);
+        setTeacherList(prev => [...prev, response.data]);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Saqlashda xatolik");
     }
-    setIsModalOpen(false);
   };
 
   return (
@@ -139,13 +173,15 @@ export const Teachers = () => {
             <h2 className="text-3xl font-black tracking-tight text-slate-900">O‘qituvchilar</h2>
             <p className="text-sm text-slate-500 mt-1">Markazimizning malakali mutaxassislari</p>
           </div>
-          <button 
-            onClick={handleAddClick}
-            className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95"
-          >
-            <Plus size={20} />
-            <span>O‘qituvchi qo‘shish</span>
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={handleAddClick}
+              className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95"
+            >
+              <Plus size={20} />
+              <span>O‘qituvchi qo‘shish</span>
+            </button>
+          )}
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -153,6 +189,8 @@ export const Teachers = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#ec5b13] transition-colors" size={20} />
             <input 
               type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Ism yoki mutaxassislik bo'yicha qidirish" 
               className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 placeholder:text-slate-400 text-sm outline-none transition-all"
             />
@@ -186,22 +224,24 @@ export const Teachers = () => {
                       teacher.status === 'Faol' ? "bg-emerald-500" : "bg-slate-300"
                     )}></div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={() => handleEditClick(teacher)}
-                      className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                      title="Tahrirlash"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteClick(teacher)}
-                      className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                      title="O'chirish"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => handleEditClick(teacher)}
+                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                        title="Tahrirlash"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteClick(teacher)}
+                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                        title="O'chirish"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-6">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Phone, 
@@ -23,31 +23,34 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { Modal } from '@/src/components/Modal';
-
-const mockTeacher = {
-  id: '1',
-  name: 'Alisher Navoiy',
-  phone: '+998 90 123 45 67',
-  specialty: 'Matematika',
-  groupsCount: 4,
-  status: 'Faol',
-  hours: 120,
-  studentsCount: 65,
-  rating: 4.9,
-  salary: 4500000,
-  hourlyRate: 35000,
-  bonus: 500000,
-  birthDate: '1985-05-15',
-  experience: '12 yil',
-  bio: 'Oliy toifali matematika o\'qituvchisi. 10 yildan ortiq tajribaga ega. Ko\'plab olimpiada g\'oliblari ustozi.'
-};
+import { api } from '@/src/lib/api';
+import { Teacher } from '@/src/types';
 
 export const TeacherProfile = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Guruhlar');
+  const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTeacher = async () => {
+      if (!id) return;
+      setIsLoading(true);
+      try {
+        const response = await api.get(`/teachers/${id}`);
+        setTeacher(response.data);
+      } catch (err) {
+        setError("O'qituvchi ma'lumotlarini yuklashda xatolik yuz berdi.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTeacher();
+  }, [id]);
 
   const tabs = ['Guruhlar', 'Dars jadvali', 'To\'lovlar', 'Yutuqlar'];
 
@@ -168,6 +171,28 @@ export const TeacherProfile = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-8">
+          <div className="text-slate-500 font-bold">Yuklanmoqda...</div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !teacher) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-8">
+          <div className="text-rose-500 font-bold">{error || "O'qituvchi topilmadi"}</div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <Header />
@@ -208,22 +233,28 @@ export const TeacherProfile = () => {
               <div className="px-6 pb-6 -mt-12">
                 <div className="relative inline-block">
                   <div className="size-24 rounded-3xl bg-white p-1 shadow-xl">
-                    <img 
-                      src={`https://picsum.photos/seed/${id}/200/200`} 
-                      alt={mockTeacher.name}
-                      className="w-full h-full rounded-2xl object-cover border border-slate-100"
-                      referrerPolicy="no-referrer"
-                    />
+                    {teacher.avatar ? (
+                      <img 
+                        src={teacher.avatar} 
+                        alt={teacher.name}
+                        className="w-full h-full rounded-2xl object-cover border border-slate-100"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-2xl border border-slate-100">
+                        {teacher.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
                   </div>
                   <div className={cn(
                     "absolute bottom-1 right-1 size-5 border-4 border-white rounded-full",
-                    mockTeacher.status === 'Faol' ? "bg-emerald-500" : "bg-slate-300"
+                    teacher.status === 'Faol' ? "bg-emerald-500" : "bg-slate-300"
                   )}></div>
                 </div>
                 
                 <div className="mt-4">
-                  <h2 className="text-2xl font-black text-slate-900">{mockTeacher.name}</h2>
-                  <p className="text-sm font-bold text-[#ec5b13] bg-orange-50 inline-block px-2 py-0.5 rounded-lg mt-1">{mockTeacher.specialty}</p>
+                  <h2 className="text-2xl font-black text-slate-900">{teacher.name}</h2>
+                  <p className="text-sm font-bold text-[#ec5b13] bg-orange-50 inline-block px-2 py-0.5 rounded-lg mt-1">{teacher.specialty}</p>
                 </div>
 
                 <div className="mt-6 space-y-4">
@@ -231,26 +262,26 @@ export const TeacherProfile = () => {
                     <div className="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                       <Phone size={18} />
                     </div>
-                    <span className="font-bold text-slate-700">{mockTeacher.phone}</span>
+                    <span className="font-bold text-slate-700">{teacher.phone}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <div className="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                       <Briefcase size={18} />
                     </div>
-                    <span className="font-bold text-slate-700">{mockTeacher.experience} tajriba</span>
+                    <span className="font-bold text-slate-700">{teacher.experience} tajriba</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <div className="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                       <Calendar size={18} />
                     </div>
-                    <span className="font-bold text-slate-700">{mockTeacher.birthDate}</span>
+                    <span className="font-bold text-slate-700">{teacher.birthDate}</span>
                   </div>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-slate-50">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Biografiya</h4>
                   <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                    {mockTeacher.bio}
+                    {teacher.bio || "Ma'lumot kiritilmagan"}
                   </p>
                 </div>
               </div>
@@ -267,11 +298,11 @@ export const TeacherProfile = () => {
               <div className="space-y-4">
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase">Asosiy maosh</p>
-                  <p className="text-xl font-black text-slate-900">{mockTeacher.salary.toLocaleString()} <span className="text-xs font-normal text-slate-400">UZS</span></p>
+                  <p className="text-xl font-black text-slate-900">{teacher.salary?.toLocaleString() || 0} <span className="text-xs font-normal text-slate-400">UZS</span></p>
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase">Oylik bonus</p>
-                  <p className="text-lg font-black text-emerald-600">+{mockTeacher.bonus.toLocaleString()} <span className="text-xs font-normal text-slate-400">UZS</span></p>
+                  <p className="text-lg font-black text-emerald-600">+{teacher.bonus?.toLocaleString() || 0} <span className="text-xs font-normal text-slate-400">UZS</span></p>
                 </div>
                 <div className="flex items-center gap-2 text-emerald-600">
                   <TrendingUp size={14} />
@@ -290,7 +321,7 @@ export const TeacherProfile = () => {
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase">Login</p>
-                    <p className="text-sm font-bold text-slate-900">alisher_n</p>
+                    <p className="text-sm font-bold text-slate-900">{teacher.login || 'Kiritilmagan'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -299,7 +330,7 @@ export const TeacherProfile = () => {
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase">Parol</p>
-                    <p className="text-sm font-bold text-slate-900">navoiy123</p>
+                    <p className="text-sm font-bold text-slate-900">{teacher.password ? '••••••••' : 'Kiritilmagan'}</p>
                   </div>
                 </div>
               </div>
@@ -317,7 +348,7 @@ export const TeacherProfile = () => {
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">O'quvchilar</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{mockTeacher.studentsCount} <span className="text-xs font-normal text-slate-400">ta</span></h4>
+                <h4 className="text-2xl font-black text-slate-900">{teacher.studentsCount || 0} <span className="text-xs font-normal text-slate-400">ta</span></h4>
               </div>
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
@@ -326,7 +357,7 @@ export const TeacherProfile = () => {
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Dars soati</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{mockTeacher.hours} <span className="text-xs font-normal text-slate-400">soat</span></h4>
+                <h4 className="text-2xl font-black text-slate-900">{teacher.hours || 0} <span className="text-xs font-normal text-slate-400">soat</span></h4>
               </div>
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
@@ -335,7 +366,7 @@ export const TeacherProfile = () => {
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Reyting</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{mockTeacher.rating} <span className="text-xs font-normal text-slate-400">/ 5.0</span></h4>
+                <h4 className="text-2xl font-black text-slate-900">{teacher.rating || 0} <span className="text-xs font-normal text-slate-400">/ 5.0</span></h4>
               </div>
             </div>
 
@@ -379,31 +410,31 @@ export const TeacherProfile = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Ismi sharifi</label>
-            <input type="text" defaultValue={mockTeacher.name} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
+            <input type="text" defaultValue={teacher.name} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Telefon raqami</label>
-            <input type="text" defaultValue={mockTeacher.phone} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
+            <input type="text" defaultValue={teacher.phone} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Mutaxassisligi</label>
-            <input type="text" defaultValue={mockTeacher.specialty} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
+            <input type="text" defaultValue={teacher.specialty} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Oylik maoshi</label>
-            <input type="text" defaultValue={mockTeacher.salary} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
+            <input type="text" defaultValue={teacher.salary} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Oylik bonus (UZS)</label>
-            <input type="number" defaultValue={mockTeacher.bonus} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
+            <input type="number" defaultValue={teacher.bonus} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Tug'ilgan sanasi</label>
-            <input type="date" defaultValue={mockTeacher.birthDate} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
+            <input type="date" defaultValue={teacher.birthDate} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-slate-400 uppercase">Status</label>
-            <select defaultValue={mockTeacher.status} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm cursor-pointer">
+            <select defaultValue={teacher.status} className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none font-bold text-sm cursor-pointer">
               <option>Faol</option>
               <option>Nofaol</option>
             </select>
@@ -419,9 +450,14 @@ export const TeacherProfile = () => {
         footer={
           <>
             <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Bekor qilish</button>
-            <button onClick={() => {
-              setIsDeleteModalOpen(false);
-              navigate('/teachers');
+            <button onClick={async () => {
+              try {
+                await api.delete(`/teachers/${id}`);
+                setIsDeleteModalOpen(false);
+                navigate('/teachers');
+              } catch (err) {
+                console.error("Failed to delete teacher", err);
+              }
             }} className="flex-1 py-3 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200">Ha, o'chirilsin</button>
           </>
         }
@@ -433,7 +469,7 @@ export const TeacherProfile = () => {
           <div>
             <h3 className="text-lg font-black text-slate-900">Ishonchingiz komilmi?</h3>
             <p className="text-sm text-slate-500 mt-1">
-              Siz <span className="font-bold text-slate-900">{mockTeacher.name}</span>ni tizimdan o'chirmoqchisiz. Bu amalni ortga qaytarib bo'lmaydi.
+              Siz <span className="font-bold text-slate-900">{teacher.name}</span>ni tizimdan o'chirmoqchisiz. Bu amalni ortga qaytarib bo'lmaydi.
             </p>
           </div>
         </div>

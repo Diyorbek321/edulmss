@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -16,22 +16,19 @@ import { cn } from '@/src/lib/utils';
 import { Modal } from '@/src/components/Modal';
 import { Course, Group } from '@/src/types';
 import { Users } from 'lucide-react';
-
-const courses: Course[] = [
-  { id: '1', name: 'General English', duration: '4 oy', price: '450,000', lessonsCount: 48, groupsCount: 12, status: 'Faol', description: 'Barcha darajalar uchun umumiy ingliz tili kursi.' },
-  { id: '2', name: 'IELTS Intensive', duration: '3 oy', price: '600,000', lessonsCount: 36, groupsCount: 5, status: 'Faol', description: 'IELTS imtihoniga tayyorlov kursi.' },
-  { id: '3', name: 'Frontend React', duration: '6 oy', price: '1,200,000', lessonsCount: 72, groupsCount: 3, status: 'Faol', description: 'Zamonaviy web dasturlash kursi.' },
-  { id: '4', name: 'Mathematics SAT', duration: '5 oy', price: '500,000', lessonsCount: 60, groupsCount: 4, status: 'Nofaol', description: 'SAT imtihoniga tayyorlov kursi.' },
-];
-
-const mockGroups: Group[] = [
-  { id: '1', name: 'English IELTS #12', course: 'General English', level: 'Advanced', teacher: 'Alisher Navoiy', studentsCount: 15, capacity: 18, status: 'Faol', schedule: 'Dush-Chor-Jum', time: '14:00 - 15:30', room: '302-xona' },
-  { id: '2', name: 'Foundation #4', course: 'General English', level: 'Beginner', teacher: 'Malika Ahmedova', studentsCount: 12, capacity: 12, status: 'Faol', schedule: 'Sesh-Pay-Shan', time: '10:00 - 11:30', room: '101-xona' },
-  { id: '3', name: 'Backend Pro #1', course: 'Frontend React', level: 'Intermediate', teacher: 'Bobur Mirzo', studentsCount: 8, capacity: 15, status: 'Qabul ochiq', schedule: 'Dush-Chor-Jum', time: '18:30 - 20:00', room: 'Laboratoriya' },
-];
+import { api } from '@/src/lib/api';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 export const Courses = () => {
-  const [courseList, setCourseList] = useState<Course[]>(courses);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  const [courseList, setCourseList] = useState<Course[]>([]);
+  const [groupList, setGroupList] = useState<Group[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -46,6 +43,40 @@ export const Courses = () => {
     description: ''
   });
 
+  const fetchCourses = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get('/courses', {
+        params: { search: searchQuery }
+      });
+      setCourseList(response.data);
+    } catch (err) {
+      setError("Kurslarni yuklashda xatolik yuz berdi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const response = await api.get('/groups');
+      setGroupList(response.data);
+    } catch (err) {
+      console.error("Guruhlarni yuklashda xatolik yuz berdi.");
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (isGroupModalOpen) {
+      fetchGroups();
+    }
+  }, [isGroupModalOpen]);
+
   const handleAddClick = () => {
     setEditingCourse(null);
     setFormData({ name: '', duration: '', price: '', description: '' });
@@ -58,25 +89,24 @@ export const Courses = () => {
       name: course.name,
       duration: course.duration,
       price: course.price,
-      description: course.description
+      description: course.description || ''
     });
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingCourse) {
-      setCourseList(prev => prev.map(c => c.id === editingCourse.id ? { ...c, ...formData } : c));
-    } else {
-      const newCourse: Course = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-        lessonsCount: 0,
-        groupsCount: 0,
-        status: 'Faol'
-      };
-      setCourseList(prev => [...prev, newCourse]);
+  const handleSave = async () => {
+    try {
+      if (editingCourse) {
+        const response = await api.put(`/courses/${editingCourse.id}`, formData);
+        setCourseList(prev => prev.map(c => c.id === editingCourse.id ? response.data : c));
+      } else {
+        const response = await api.post('/courses', formData);
+        setCourseList(prev => [...prev, response.data]);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Saqlashda xatolik");
     }
-    setIsModalOpen(false);
   };
 
   const handleDeleteClick = (course: Course) => {
@@ -84,11 +114,16 @@ export const Courses = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (courseToDelete) {
-      setCourseList(prev => prev.filter(c => c.id !== courseToDelete.id));
-      setIsDeleteModalOpen(false);
-      setCourseToDelete(null);
+      try {
+        await api.delete(`/courses/${courseToDelete.id}`);
+        setCourseList(prev => prev.filter(c => c.id !== courseToDelete.id));
+        setIsDeleteModalOpen(false);
+        setCourseToDelete(null);
+      } catch (err) {
+        console.error("O'chirishda xatolik");
+      }
     }
   };
 
@@ -102,13 +137,28 @@ export const Courses = () => {
             <h2 className="text-3xl font-black tracking-tight text-slate-900">Kurslar</h2>
             <p className="text-sm text-slate-500 mt-1">Markazda o'tiladigan barcha o'quv yo'nalishlari</p>
           </div>
-          <button 
-            onClick={handleAddClick}
-            className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95"
-          >
-            <Plus size={20} />
-            <span>Kurs qo'shish</span>
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={handleAddClick}
+              className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95"
+            >
+              <Plus size={20} />
+              <span>Kurs qo'shish</span>
+            </button>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="relative group max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#ec5b13] transition-colors" size={20} />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Kurs nomi bo'yicha qidirish" 
+              className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 placeholder:text-slate-400 text-sm outline-none transition-all"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -120,17 +170,19 @@ export const Courses = () => {
                     <BookOpen size={28} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => {
-                        setSelectedCourse(course);
-                        setIsGroupModalOpen(true);
-                      }}
-                      className="p-2 text-slate-400 hover:bg-orange-50 hover:text-[#ec5b13] rounded-xl transition-colors flex items-center gap-1 text-xs font-bold"
-                      title="Guruhlarni boshqarish"
-                    >
-                      <Users size={18} />
-                      <span>Guruhlar</span>
-                    </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={() => {
+                          setSelectedCourse(course);
+                          setIsGroupModalOpen(true);
+                        }}
+                        className="p-2 text-slate-400 hover:bg-orange-50 hover:text-[#ec5b13] rounded-xl transition-colors flex items-center gap-1 text-xs font-bold"
+                        title="Guruhlarni boshqarish"
+                      >
+                        <Users size={18} />
+                        <span>Guruhlar</span>
+                      </button>
+                    )}
                     <span className={cn(
                       "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider",
                       course.status === 'Faol' ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
@@ -162,18 +214,22 @@ export const Courses = () => {
                     <p className="text-[10px] font-black text-slate-400 uppercase">Kurs narxi</p>
                     <p className="text-lg font-black text-slate-900">{course.price} <span className="text-xs font-normal text-slate-400">UZS</span></p>
                   </div>
-                  <button 
-                    onClick={() => handleDeleteClick(course)}
-                    className="p-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                  <button 
-                    onClick={() => handleEditClick(course)}
-                    className="p-3 bg-slate-50 text-slate-400 hover:bg-[#ec5b13] hover:text-white rounded-xl transition-all"
-                  >
-                    <Edit2 size={18} />
-                  </button>
+                  {isAdmin && (
+                    <>
+                      <button 
+                        onClick={() => handleDeleteClick(course)}
+                        className="p-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleEditClick(course)}
+                        className="p-3 bg-slate-50 text-slate-400 hover:bg-[#ec5b13] hover:text-white rounded-xl transition-all"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -198,7 +254,7 @@ export const Courses = () => {
         <div className="space-y-4">
           <p className="text-sm text-slate-500 font-medium">Ushbu kursga tegishli guruhlarni tanlang:</p>
           <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2">
-            {mockGroups.map((group) => (
+            {groupList.map((group) => (
               <label 
                 key={group.id} 
                 className={cn(

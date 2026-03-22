@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 const attendanceData = [
   { id: '1', name: 'Alisher Sadullayev', status: 'present', group: 'English IELTS #12' },
@@ -25,6 +26,8 @@ const attendanceData = [
 ];
 
 export const Attendance = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [selectedGroup, setSelectedGroup] = useState('English IELTS #12');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [students, setStudents] = useState(attendanceData);
@@ -147,15 +150,17 @@ export const Attendance = () => {
                       <p className="text-sm font-black text-rose-700">{absentCount}</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => {
-                      // In a real app, this would save to the database
-                      alert(`${selectedGroup} uchun ${formatDate(currentDate)} sanasidagi davomat saqlandi!`);
-                    }}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-100 transition-all active:scale-95"
-                  >
-                    Saqlash
-                  </button>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => {
+                        // In a real app, this would save to the database
+                        alert(`${selectedGroup} uchun ${formatDate(currentDate)} sanasidagi davomat saqlandi!`);
+                      }}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-100 transition-all active:scale-95"
+                    >
+                      Saqlash
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -172,48 +177,56 @@ export const Attendance = () => {
                     
                     <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
                       <button 
-                        onClick={() => handleStatusChange(student.id, 'present')}
+                        onClick={() => isAdmin && handleStatusChange(student.id, 'present')}
+                        disabled={!isAdmin}
                         className={cn(
                           "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                           student.status === 'present' 
                             ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-200" 
-                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-emerald-50 hover:text-emerald-600"
+                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-emerald-50 hover:text-emerald-600",
+                          !isAdmin && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <Check size={14} />
                         Keldi
                       </button>
                       <button 
-                        onClick={() => handleStatusChange(student.id, 'late')}
+                        onClick={() => isAdmin && handleStatusChange(student.id, 'late')}
+                        disabled={!isAdmin}
                         className={cn(
                           "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                           student.status === 'late' 
                             ? "bg-amber-100 text-amber-700 border-2 border-amber-200" 
-                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-amber-50 hover:text-amber-600"
+                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-amber-50 hover:text-amber-600",
+                          !isAdmin && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <AlertCircle size={14} />
                         Kechikdi
                       </button>
                       <button 
-                        onClick={() => handleStatusChange(student.id, 'excused')}
+                        onClick={() => isAdmin && handleStatusChange(student.id, 'excused')}
+                        disabled={!isAdmin}
                         className={cn(
                           "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                           student.status === 'excused' 
                             ? "bg-blue-100 text-blue-700 border-2 border-blue-200" 
-                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-blue-50 hover:text-blue-600"
+                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-blue-50 hover:text-blue-600",
+                          !isAdmin && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <Clock size={14} />
                         Sababli
                       </button>
                       <button 
-                        onClick={() => handleStatusChange(student.id, 'absent')}
+                        onClick={() => isAdmin && handleStatusChange(student.id, 'absent')}
+                        disabled={!isAdmin}
                         className={cn(
                           "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                           student.status === 'absent' 
                             ? "bg-rose-100 text-rose-700 border-2 border-rose-200" 
-                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-rose-50 hover:text-rose-600"
+                            : "bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-rose-50 hover:text-rose-600",
+                          !isAdmin && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <X size={14} />

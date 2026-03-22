@@ -25,6 +25,7 @@ import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { Modal } from '@/src/components/Modal';
 import { exportToCSV } from '@/src/lib/exportUtils';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 const initialSalaries = [
   { id: '1', name: 'Alisher Navoiy', role: 'O\'qituvchi', amount: 4200000, bonus: 500000, total: 4700000, status: 'To\'landi', date: '2026-02-10', method: 'Karta orqali', type: 'Asosiy maosh', hours: 120, rate: 35000 },
@@ -41,6 +42,8 @@ const teachersList = [
 ];
 
 export const Salaries = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [salaries, setSalaries] = useState(initialSalaries);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSalary, setEditingSalary] = useState<any>(null);
@@ -171,13 +174,15 @@ export const Salaries = () => {
               <Download size={18} />
               <span>Eksport</span>
             </button>
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
-            >
-              <Plus size={18} />
-              <span>Maosh hisoblash</span>
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
+              >
+                <Plus size={18} />
+                <span>Maosh hisoblash</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -263,20 +268,22 @@ export const Salaries = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleEdit(s)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(s.id)}
-                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleEdit(s)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(s.id)}
+                          className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

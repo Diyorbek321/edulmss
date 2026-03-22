@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -18,33 +18,31 @@ import {
 } from 'lucide-react';
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
+import { SkeletonTable } from '@/src/components/SkeletonTable';
+import { ErrorState } from '@/src/components/ErrorState';
 import { Modal } from '@/src/components/Modal';
 import { Group, Student } from '@/src/types';
-
-const mockAllStudents: Student[] = [
-  { id: '1', name: 'Alisher Sadullayev', phone: '+998 90 123 45 67', group: 'English IELTS #12', status: 'Faol', debt: 0, paid: 1200000, attendance: 95, birthDate: '15.05.2008', gender: 'Erkak', address: 'Toshkent', parentName: 'Jasur', parentPhone: '901234567' },
-  { id: '2', name: 'Malika Karimova', phone: '+998 93 456 78 90', group: 'Foundation #4', status: 'Faol', debt: 250000, paid: 800000, attendance: 80, birthDate: '10.02.2009', gender: 'Ayol', address: 'Toshkent', parentName: 'Zuhra', parentPhone: '934567890' },
-  { id: '3', name: 'Javohir Orifov', phone: '+998 97 777 00 11', group: 'Backend Pro #1', status: 'Faol', debt: 0, paid: 1500000, attendance: 100, birthDate: '20.12.2007', gender: 'Erkak', address: 'Toshkent', parentName: 'Anvar', parentPhone: '977770011' },
-  { id: '4', name: 'Shaxnoza Hasanova', phone: '+998 99 888 22 33', group: 'English Intermediate', status: 'Faol', debt: 0, paid: 400000, attendance: 60, birthDate: '05.08.2008', gender: 'Ayol', address: 'Toshkent', parentName: 'Nigora', parentPhone: '998882233' },
-  { id: '5', name: 'Sardor Qodirov', phone: '+998 90 111 22 33', group: '', status: 'Kutishda', debt: 0, paid: 0, attendance: 0, birthDate: '12.03.2008', gender: 'Erkak', address: 'Toshkent', parentName: 'Qodir', parentPhone: '901112233' },
-];
-
-const groups: Group[] = [
-  { id: '1', name: 'English IELTS #12', course: 'English IELTS', level: 'Advanced', teacher: 'Alisher Navoiy', studentsCount: 15, capacity: 18, status: 'Faol', schedule: 'Dush-Chor-Jum', time: '14:00 - 15:30', room: '302-xona' },
-  { id: '2', name: 'Foundation #4', course: 'Foundation', level: 'Beginner', teacher: 'Malika Ahmedova', studentsCount: 12, capacity: 12, status: 'Faol', schedule: 'Sesh-Pay-Shan', time: '10:00 - 11:30', room: '101-xona' },
-  { id: '3', name: 'Backend Pro #1', course: 'Web Development', level: 'Intermediate', teacher: 'Bobur Mirzo', studentsCount: 8, capacity: 15, status: 'Qabul ochiq', schedule: 'Dush-Chor-Jum', time: '18:30 - 20:00', room: 'Laboratoriya' },
-];
+import { api } from '@/src/lib/api';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 export const Groups = () => {
-  const [groupList, setGroupList] = useState<Group[]>(groups);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  const [groupList, setGroupList] = useState<Group[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Barchasi');
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
+  
   const [isManageStudentsModalOpen, setIsManageStudentsModalOpen] = useState(false);
   const [selectedGroupForStudents, setSelectedGroupForStudents] = useState<Group | null>(null);
-  const [allStudents, setAllStudents] = useState<Student[]>(mockAllStudents);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [searchStudent, setSearchStudent] = useState('');
 
   const [formData, setFormData] = useState({
@@ -59,6 +57,40 @@ export const Groups = () => {
     studentsCount: 0,
     status: 'Qabul ochiq'
   });
+
+  const fetchGroups = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get('/groups', {
+        params: { search: searchQuery }
+      });
+      setGroupList(response.data);
+    } catch (err) {
+      setError("Guruhlarni yuklashda xatolik yuz berdi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const response = await api.get('/students');
+      setAllStudents(response.data);
+    } catch (err) {
+      console.error("O'quvchilarni yuklashda xatolik");
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (isManageStudentsModalOpen) {
+      fetchStudents();
+    }
+  }, [isManageStudentsModalOpen]);
 
   const handleAddClick = () => {
     setEditingGroup(null);
@@ -99,25 +131,32 @@ export const Groups = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (groupToDelete) {
-      setGroupList(prev => prev.filter(g => g.id !== groupToDelete.id));
-      setIsDeleteModalOpen(false);
-      setGroupToDelete(null);
+      try {
+        await api.delete(`/groups/${groupToDelete.id}`);
+        setGroupList(prev => prev.filter(g => g.id !== groupToDelete.id));
+        setIsDeleteModalOpen(false);
+        setGroupToDelete(null);
+      } catch (err) {
+        console.error("O'chirishda xatolik");
+      }
     }
   };
 
-  const handleSave = () => {
-    if (editingGroup) {
-      setGroupList(prev => prev.map(g => g.id === editingGroup.id ? { ...g, ...formData } : g));
-    } else {
-      const newGroup: Group = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData
-      };
-      setGroupList(prev => [...prev, newGroup]);
+  const handleSave = async () => {
+    try {
+      if (editingGroup) {
+        const response = await api.put(`/groups/${editingGroup.id}`, formData);
+        setGroupList(prev => prev.map(g => g.id === editingGroup.id ? response.data : g));
+      } else {
+        const response = await api.post('/groups', formData);
+        setGroupList(prev => [...prev, response.data]);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Saqlashda xatolik");
     }
-    setIsModalOpen(false);
   };
 
   const handleManageStudentsClick = (group: Group) => {
@@ -126,38 +165,36 @@ export const Groups = () => {
     setSearchStudent('');
   };
 
-  const handleAddStudentToGroup = (studentId: string) => {
+  const handleAddStudentToGroup = async (studentId: string) => {
     if (!selectedGroupForStudents) return;
-    
-    // Update student's group
-    setAllStudents(prev => prev.map(s => 
-      s.id === studentId ? { ...s, group: selectedGroupForStudents.name } : s
-    ));
-    
-    // Update group's student count
-    setGroupList(prev => prev.map(g => 
-      g.id === selectedGroupForStudents.id ? { ...g, studentsCount: g.studentsCount + 1 } : g
-    ));
-    
-    // Update selected group state to reflect new count
-    setSelectedGroupForStudents(prev => prev ? { ...prev, studentsCount: prev.studentsCount + 1 } : null);
+    try {
+      await api.put(`/students/${studentId}`, { group_id: selectedGroupForStudents.id });
+      setAllStudents(prev => prev.map(s => 
+        s.id === studentId ? { ...s, group_id: selectedGroupForStudents.id } : s
+      ));
+      setGroupList(prev => prev.map(g => 
+        g.id === selectedGroupForStudents.id ? { ...g, studentsCount: g.studentsCount + 1 } : g
+      ));
+      setSelectedGroupForStudents(prev => prev ? { ...prev, studentsCount: prev.studentsCount + 1 } : null);
+    } catch (err) {
+      console.error("O'quvchini guruhga qo'shishda xatolik");
+    }
   };
 
-  const handleRemoveStudentFromGroup = (studentId: string) => {
+  const handleRemoveStudentFromGroup = async (studentId: string) => {
     if (!selectedGroupForStudents) return;
-    
-    // Clear student's group
-    setAllStudents(prev => prev.map(s => 
-      s.id === studentId ? { ...s, group: '' } : s
-    ));
-    
-    // Update group's student count
-    setGroupList(prev => prev.map(g => 
-      g.id === selectedGroupForStudents.id ? { ...g, studentsCount: Math.max(0, g.studentsCount - 1) } : g
-    ));
-    
-    // Update selected group state to reflect new count
-    setSelectedGroupForStudents(prev => prev ? { ...prev, studentsCount: Math.max(0, prev.studentsCount - 1) } : null);
+    try {
+      await api.put(`/students/${studentId}`, { group_id: null });
+      setAllStudents(prev => prev.map(s => 
+        s.id === studentId ? { ...s, group_id: undefined } : s
+      ));
+      setGroupList(prev => prev.map(g => 
+        g.id === selectedGroupForStudents.id ? { ...g, studentsCount: Math.max(0, g.studentsCount - 1) } : g
+      ));
+      setSelectedGroupForStudents(prev => prev ? { ...prev, studentsCount: Math.max(0, prev.studentsCount - 1) } : null);
+    } catch (err) {
+      console.error("O'quvchini guruhdan o'chirishda xatolik");
+    }
   };
 
   const filteredGroups = groupList.filter(g => {
@@ -175,13 +212,15 @@ export const Groups = () => {
             <h2 className="text-3xl font-black tracking-tight text-slate-900">Guruhlar boshqaruvi</h2>
             <p className="text-sm text-slate-500 mt-1">O'quv guruhlarini shakllantirish va nazorat qilish</p>
           </div>
-          <button 
-            onClick={handleAddClick}
-            className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95"
-          >
-            <Plus size={20} />
-            <span>Guruh yaratish</span>
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={handleAddClick}
+              className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95"
+            >
+              <Plus size={20} />
+              <span>Guruh yaratish</span>
+            </button>
+          )}
         </div>
 
         {/* Tabs and Filters */}
@@ -207,6 +246,8 @@ export const Groups = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#ec5b13] transition-colors" size={20} />
               <input 
                 type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Guruh nomi..." 
                 className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm outline-none transition-all"
               />
@@ -218,101 +259,113 @@ export const Groups = () => {
         </div>
 
         {/* Groups Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredGroups.map((group) => (
-            <div key={group.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all group overflow-hidden flex flex-col">
-              <div className="p-6 flex-1">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="size-14 bg-orange-50 rounded-2xl flex items-center justify-center text-[#ec5b13] group-hover:scale-110 transition-transform duration-300">
-                    <BookOpen size={28} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                      group.status === 'Faol' ? "bg-emerald-100 text-emerald-700" :
-                      group.status === 'Qabul ochiq' ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
-                    )}>
-                      {group.status}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button 
-                        onClick={() => handleManageStudentsClick(group)}
-                        className="p-2 text-slate-300 hover:text-emerald-600 transition-colors"
-                        title="O'quvchilarni boshqarish"
-                      >
-                        <Users size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleEditClick(group)}
-                        className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
-                        title="Tahrirlash"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteClick(group)}
-                        className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
-                        title="O'chirish"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-3xl border border-slate-200 h-[300px] animate-pulse"></div>
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorState message={error} onRetry={fetchGroups} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredGroups.map((group) => (
+              <div key={group.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all group overflow-hidden flex flex-col">
+                <div className="p-6 flex-1">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="size-14 bg-orange-50 rounded-2xl flex items-center justify-center text-[#ec5b13] group-hover:scale-110 transition-transform duration-300">
+                      <BookOpen size={28} />
                     </div>
-                  </div>
-                </div>
-
-                <h3 className="text-xl font-black text-slate-900 mb-1">{group.name}</h3>
-                <p className="text-sm text-slate-500 font-bold mb-6">{group.course}</p>
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400">
-                      <User size={16} />
-                    </div>
-                    <span className="text-slate-600 font-medium">
-                      <strong className="text-slate-900">O'qituvchi:</strong> {group.teacher}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400">
-                      <Calendar size={16} />
-                    </div>
-                    <span className="text-slate-600 font-medium">
-                      <strong className="text-slate-900">Jadval:</strong> {group.schedule}, {group.time}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400">
-                      <MapPin size={16} />
-                    </div>
-                    <span className="text-slate-600 font-medium">
-                      <strong className="text-slate-900">Xona:</strong> {group.room}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-slate-50">
-                  <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">
-                      <Users size={14} className="text-slate-400" />
-                      <span className="text-xs font-black text-slate-400 uppercase tracking-wider">To'lganlik</span>
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                        group.status === 'Faol' ? "bg-emerald-100 text-emerald-700" :
+                        group.status === 'Qabul ochiq' ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                      )}>
+                        {group.status}
+                      </span>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => handleManageStudentsClick(group)}
+                            className="p-2 text-slate-300 hover:text-emerald-600 transition-colors"
+                            title="O'quvchilarni boshqarish"
+                          >
+                            <Users size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleEditClick(group)}
+                            className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
+                            title="Tahrirlash"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClick(group)}
+                            className="p-2 text-slate-300 hover:text-rose-600 transition-colors"
+                            title="O'chirish"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <span className="text-sm font-black text-[#ec5b13]">{group.studentsCount} / {group.capacity}</span>
                   </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                    <div 
-                      className={cn(
-                        "h-full rounded-full transition-all duration-500",
-                        group.status === 'Faol' ? "bg-emerald-500" :
-                        group.status === 'Qabul ochiq' ? "bg-blue-500" : "bg-orange-500"
-                      )} 
-                      style={{ width: `${(group.studentsCount / group.capacity) * 100}%` }}
-                    ></div>
+
+                  <h3 className="text-xl font-black text-slate-900 mb-1">{group.name}</h3>
+                  <p className="text-sm text-slate-500 font-bold mb-6">{group.course}</p>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400">
+                        <User size={16} />
+                      </div>
+                      <span className="text-slate-600 font-medium">
+                        <strong className="text-slate-900">O'qituvchi:</strong> {group.teacher}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400">
+                        <Calendar size={16} />
+                      </div>
+                      <span className="text-slate-600 font-medium">
+                        <strong className="text-slate-900">Jadval:</strong> {group.schedule}, {group.time}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400">
+                        <MapPin size={16} />
+                      </div>
+                      <span className="text-slate-600 font-medium">
+                        <strong className="text-slate-900">Xona:</strong> {group.room}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-slate-50">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <Users size={14} className="text-slate-400" />
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-wider">To'lganlik</span>
+                      </div>
+                      <span className="text-sm font-black text-[#ec5b13]">{group.studentsCount} / {group.capacity}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          group.status === 'Faol' ? "bg-emerald-500" :
+                          group.status === 'Qabul ochiq' ? "bg-blue-500" : "bg-orange-500"
+                        )} 
+                        style={{ width: `${(group.studentsCount / group.capacity) * 100}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Add/Edit Group Modal */}

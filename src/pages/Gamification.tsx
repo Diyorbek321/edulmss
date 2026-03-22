@@ -12,6 +12,7 @@ import {
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { Modal } from '@/src/components/Modal';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 interface Reward {
   id: string;
@@ -36,6 +37,8 @@ const recentPurchases = [
 ];
 
 export const Gamification = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [activeTab, setActiveTab] = useState('Mukofotlar');
   const [rewards, setRewards] = useState<Reward[]>(initialRewards);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -127,7 +130,7 @@ export const Gamification = () => {
                 Xaridlar tarixi
               </button>
             </div>
-            {activeTab === 'Mukofotlar' && (
+            {activeTab === 'Mukofotlar' && isAdmin && (
               <button 
                 onClick={handleAddClick}
                 className="flex items-center gap-2 bg-[#ec5b13] hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95 text-sm"
@@ -150,20 +153,22 @@ export const Gamification = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => handleEditClick(reward)}
-                      className="p-2 bg-white/90 backdrop-blur-sm text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteClick(reward.id)}
-                      className="p-2 bg-white/90 backdrop-blur-sm text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleEditClick(reward)}
+                        className="p-2 bg-white/90 backdrop-blur-sm text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteClick(reward.id)}
+                        className="p-2 bg-white/90 backdrop-blur-sm text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
                   <h3 className="text-lg font-black text-slate-900 mb-2 line-clamp-2">{reward.name}</h3>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Phone, 
@@ -16,13 +16,35 @@ import {
   Key,
   Lock
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
+import { api } from '@/src/lib/api';
+import { Student } from '@/src/types';
 
 export const StudentProfile = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('Umumiy');
+  const [student, setStudent] = useState<Student | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStudent = async () => {
+      if (!id) return;
+      setIsLoading(true);
+      try {
+        const response = await api.get(`/students/${id}`);
+        setStudent(response.data);
+      } catch (err) {
+        setError("O'quvchi ma'lumotlarini yuklashda xatolik yuz berdi.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStudent();
+  }, [id]);
 
   const tabs = ['Umumiy', 'Davomat', 'To\'lovlar', 'Uyga vazifa', 'Izohlar'];
 
@@ -34,10 +56,10 @@ export const StudentProfile = () => {
             <h3 className="text-lg font-black text-slate-900">Oxirgi davomat holati</h3>
             <div className="space-y-3">
               {[
-                { date: '25.02.2026', group: 'English IELTS #12', status: 'Keldi', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                { date: '23.02.2026', group: 'English IELTS #12', status: 'Keldi', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                { date: '21.02.2026', group: 'English IELTS #12', status: 'Kelmidi', color: 'text-rose-500', bg: 'bg-rose-50' },
-                { date: '19.02.2026', group: 'English IELTS #12', status: 'Sababli', color: 'text-amber-500', bg: 'bg-amber-50' },
+                { date: '25.02.2026', group: student?.group || 'Noma\'lum', status: 'Keldi', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                { date: '23.02.2026', group: student?.group || 'Noma\'lum', status: 'Keldi', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                { date: '21.02.2026', group: student?.group || 'Noma\'lum', status: 'Kelmidi', color: 'text-rose-500', bg: 'bg-rose-50' },
+                { date: '19.02.2026', group: student?.group || 'Noma\'lum', status: 'Sababli', color: 'text-amber-500', bg: 'bg-amber-50' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-4">
@@ -91,9 +113,9 @@ export const StudentProfile = () => {
             <h3 className="text-lg font-black text-slate-900">Uyga vazifalar</h3>
             <div className="space-y-3">
               {[
-                { title: 'IELTS Writing Task 1', group: 'English IELTS #12', date: '24.02.2026', status: 'Bajarildi', color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
-                { title: 'Vocabulary Unit 5-6', group: 'English IELTS #12', date: '22.02.2026', status: 'Bajarilmadi', color: 'text-rose-500', bg: 'bg-rose-50', icon: XCircle },
-                { title: 'Reading Practice Test', group: 'English IELTS #12', date: '20.02.2026', status: 'Bajarildi', color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
+                { title: 'IELTS Writing Task 1', group: student?.group || 'Noma\'lum', date: '24.02.2026', status: 'Bajarildi', color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
+                { title: 'Vocabulary Unit 5-6', group: student?.group || 'Noma\'lum', date: '22.02.2026', status: 'Bajarilmadi', color: 'text-rose-500', bg: 'bg-rose-50', icon: XCircle },
+                { title: 'Reading Practice Test', group: student?.group || 'Noma\'lum', date: '20.02.2026', status: 'Bajarildi', color: 'text-emerald-500', bg: 'bg-emerald-50', icon: CheckCircle2 },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-4">
@@ -142,30 +164,22 @@ export const StudentProfile = () => {
             <div>
               <h3 className="text-lg font-black text-slate-900 mb-4">A'zo bo'lgan guruhlari</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex items-center justify-between group hover:border-[#ec5b13]/20 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="size-12 bg-white rounded-xl flex items-center justify-center text-[#ec5b13] shadow-sm">
-                      <BookOpen size={24} />
+                {student?.group ? (
+                  <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex items-center justify-between group hover:border-[#ec5b13]/20 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="size-12 bg-white rounded-xl flex items-center justify-center text-[#ec5b13] shadow-sm">
+                        <BookOpen size={24} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900">{student.group}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">O'qituvchi: Noma'lum</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900">English IELTS #12</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">O'qituvchi: Alisher Navoiy</p>
-                    </div>
+                    <span className="text-xs font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">FAOL</span>
                   </div>
-                  <span className="text-xs font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">FAOL</span>
-                </div>
-                <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex items-center justify-between group hover:border-[#ec5b13]/20 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="size-12 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm">
-                      <FileText size={24} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900">Foundation #4</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">O'qituvchi: Malika Ahmedova</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-amber-500 bg-amber-50 px-2 py-1 rounded-lg">YAKUNLANGAN</span>
-                </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Guruhga a'zo emas</p>
+                )}
               </div>
             </div>
 
@@ -176,7 +190,7 @@ export const StudentProfile = () => {
                 {[
                   { icon: CreditCard, color: 'text-emerald-500', bg: 'bg-emerald-50', title: 'To\'lov amalga oshirildi', desc: '450,000 UZS miqdorida to\'lov qabul qilindi', time: 'Bugun, 14:20' },
                   { icon: MessageSquare, color: 'text-blue-500', bg: 'bg-blue-50', title: 'Izoh qoldirildi', desc: 'O\'qituvchi tomonidan darsdagi faolligi uchun izoh', time: 'Kecha, 18:00' },
-                  { icon: User, color: 'text-orange-500', bg: 'bg-orange-50', title: 'Guruhga qo\'shildi', desc: 'English IELTS #12 guruhiga muvaffaqiyatli qo\'shildi', time: '12-Oktyabr' },
+                  { icon: User, color: 'text-orange-500', bg: 'bg-orange-50', title: 'Guruhga qo\'shildi', desc: `${student?.group || 'Guruh'} guruhiga muvaffaqiyatli qo'shildi`, time: '12-Oktyabr' },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4">
                     <div className={cn("size-10 rounded-xl flex-shrink-0 flex items-center justify-center", item.bg, item.color)}>
@@ -197,6 +211,28 @@ export const StudentProfile = () => {
         );
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-8">
+          <div className="text-slate-500 font-bold">Yuklanmoqda...</div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !student) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-8">
+          <div className="text-rose-500 font-bold">{error || "O'quvchi topilmadi"}</div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -219,16 +255,24 @@ export const StudentProfile = () => {
               <div className="px-6 pb-6 -mt-12">
                 <div className="relative inline-block">
                   <div className="size-24 rounded-3xl bg-white p-1 shadow-xl">
-                    <div className="w-full h-full rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-2xl border border-slate-100">
-                      AS
-                    </div>
+                    {student.avatar ? (
+                      <img src={student.avatar} alt={student.name} className="w-full h-full rounded-2xl object-cover" />
+                    ) : (
+                      <div className="w-full h-full rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-2xl border border-slate-100">
+                        {student.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
                   </div>
-                  <div className="absolute bottom-1 right-1 size-5 bg-emerald-500 border-4 border-white rounded-full"></div>
+                  <div className={cn(
+                    "absolute bottom-1 right-1 size-5 border-4 border-white rounded-full",
+                    student.status === 'Faol' ? "bg-emerald-500" :
+                    student.status === 'Muzlatilgan' ? "bg-amber-500" : "bg-slate-400"
+                  )}></div>
                 </div>
                 
                 <div className="mt-4">
-                  <h2 className="text-2xl font-black text-slate-900">Alisher Sadullayev</h2>
-                  <p className="text-sm font-bold text-slate-400">ID: #ST-20452</p>
+                  <h2 className="text-2xl font-black text-slate-900">{student.name}</h2>
+                  <p className="text-sm font-bold text-slate-400">ID: #{student.id.substring(0, 8).toUpperCase()}</p>
                 </div>
 
                 <div className="mt-6 space-y-4">
@@ -236,19 +280,19 @@ export const StudentProfile = () => {
                     <div className="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                       <Phone size={18} />
                     </div>
-                    <span className="font-bold text-slate-700">+998 90 123 45 67</span>
+                    <span className="font-bold text-slate-700">{student.phone}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <div className="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                       <MapPin size={18} />
                     </div>
-                    <span className="font-bold text-slate-700">Toshkent sh., Yunusobod t.</span>
+                    <span className="font-bold text-slate-700">{student.address}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <div className="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                       <Calendar size={18} />
                     </div>
-                    <span className="font-bold text-slate-700">15.05.2008 (15 yosh)</span>
+                    <span className="font-bold text-slate-700">{student.birthDate}</span>
                   </div>
                 </div>
 
@@ -269,11 +313,11 @@ export const StudentProfile = () => {
               <div className="space-y-4">
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase">Ismi sharifi</p>
-                  <p className="text-sm font-bold text-slate-900">Jasur Sadullayev (Otasi)</p>
+                  <p className="text-sm font-bold text-slate-900">{student.parentName}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase">Telefon raqami</p>
-                  <p className="text-sm font-bold text-slate-900">+998 90 987 65 43</p>
+                  <p className="text-sm font-bold text-slate-900">{student.parentPhone}</p>
                 </div>
               </div>
             </div>
@@ -288,7 +332,7 @@ export const StudentProfile = () => {
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase">Login</p>
-                    <p className="text-sm font-bold text-slate-900">alisher_s</p>
+                    <p className="text-sm font-bold text-slate-900">{student.login || 'Kiritilmagan'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -297,7 +341,7 @@ export const StudentProfile = () => {
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase">Parol</p>
-                    <p className="text-sm font-bold text-slate-900">alisher2008</p>
+                    <p className="text-sm font-bold text-slate-900">{student.password ? '••••••••' : 'Kiritilmagan'}</p>
                   </div>
                 </div>
               </div>
@@ -315,7 +359,7 @@ export const StudentProfile = () => {
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Qarzdorlik</span>
                 </div>
-                <h4 className="text-2xl font-black text-red-500">250,000 <span className="text-xs font-normal text-slate-400">UZS</span></h4>
+                <h4 className="text-2xl font-black text-red-500">{student.debt.toLocaleString()} <span className="text-xs font-normal text-slate-400">UZS</span></h4>
               </div>
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
@@ -324,7 +368,7 @@ export const StudentProfile = () => {
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">To'langan</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">1,200,000 <span className="text-xs font-normal text-slate-400">UZS</span></h4>
+                <h4 className="text-2xl font-black text-slate-900">{student.paid.toLocaleString()} <span className="text-xs font-normal text-slate-400">UZS</span></h4>
               </div>
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
@@ -333,7 +377,7 @@ export const StudentProfile = () => {
                   </div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Davomat</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">92 <span className="text-xs font-normal text-slate-400">%</span></h4>
+                <h4 className="text-2xl font-black text-slate-900">{student.attendance} <span className="text-xs font-normal text-slate-400">%</span></h4>
               </div>
             </div>
 
