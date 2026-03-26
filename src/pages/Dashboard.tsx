@@ -21,6 +21,7 @@ import {
 import { Header } from '@/src/components/Header';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const data = [
   { name: '1 May', value: 150 },
@@ -78,8 +79,6 @@ const debtors = [
   { name: 'Bekzod Karimov', amount: '1,200,000', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDuJKAm9QPSvHCKeXAbcRSgxk3ImZPK73OG--PmRnXH1FsOyOAABcwk5jEZW0Me5JBVfPWCzXh6Mp60bPvxfd9oUWdtdPcaDiBTngp_Dj-OXYP7XBY5LDxP-MjSFag_etkAjOJjJamYWyU1PwKf6jeKbzhtKXSx2mcdwErZ-Eo4iJjIhJvD0l3ahZL4CBNbZL0i00fSzE_S9lH5YqdeDPohOp-F20qNSwiitVFmBidtAwuA-O7hpOjgHuL2AC3bTxaCBd1zevSNu-JN' },
   { name: 'Nigora Alieva', amount: '300,000', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzgTJOLHuTNU-YAKR2wghkhH_fY9rbsEojyb5-Rg5DP8fzV6k1aycsE59H1xA7pNGcBj6uwDYNmiMY_yAlCYDWbP2zk9jSWKCWmyG7rsBUQGlXBP19QiJx1oQpO12oara3ejCE_GFlm4rNPZGXkd0PHZx5ClhwauOpXfqXno-H3RCU-zGasWnBdeMvfzEgvzLr47SSmIeBVXVzZK3h1s1jOBaiMgljMct3V1v2VM2AC4FQOzdj211yjDlZ8hQJpAEjrtVltPfmewBU' },
 ];
-
-import { useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { user } = useAuth();

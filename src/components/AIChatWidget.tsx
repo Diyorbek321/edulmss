@@ -6,8 +6,15 @@ import { api } from '@/src/lib/api';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/src/lib/utils';
 
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Initialize Gemini lazily
+let ai: GoogleGenAI | null = null;
+try {
+  if (process.env.GEMINI_API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+} catch (e) {
+  console.error("Failed to initialize Gemini AI:", e);
+}
 
 // Define tools for the AI to fetch data
 const getStudentsFunction: FunctionDeclaration = {
@@ -76,7 +83,7 @@ export const AIChatWidget = () => {
 
   useEffect(() => {
     // Initialize chat session when opened
-    if (isOpen && !chatRef.current) {
+    if (isOpen && !chatRef.current && ai) {
       chatRef.current = ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {

@@ -33,6 +33,9 @@ export interface Teacher {
   avatar?: string;
   login?: string;
   password?: string;
+  experience?: string;
+  birthDate?: string;
+  bio?: string;
 }
 
 export interface Group {

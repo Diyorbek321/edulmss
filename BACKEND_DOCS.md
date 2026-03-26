@@ -24,7 +24,20 @@ You will need to run the frontend and backend in **two separate terminal windows
 Open a new terminal in VS Code and run:
 ```bash
 cd backend
+
+# 1. Create a virtual environment (fixes the "externally-managed-environment" error)
+python3 -m venv venv
+
+# 2. Activate the virtual environment
+# On Linux/macOS:
+source venv/bin/activate
+# On Windows:
+# venv\Scripts\activate
+
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Start the server
 uvicorn main:app --reload
 ```
 The backend will start on `http://localhost:8000`. You can view the interactive API documentation at `http://localhost:8000/docs`.
