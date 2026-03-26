@@ -1,144 +1,58 @@
-# Eduly Backend Documentation
+# FastAPI Backend Documentation
 
-This document explains how the backend of the Eduly platform is structured, how it currently works, and how you can easily swap the temporary in-memory database with a real MySQL database in the future.
+This project has been migrated from Node.js/Express to a **Python FastAPI** backend.
 
-## Architecture Overview
+## Architecture
 
-The platform is built as a **Full-Stack Application** using:
-- **Frontend**: React + Vite
-- **Backend**: Node.js + Express
-- **Communication**: REST API (`/api/v1/*`)
-- **Authentication**: JWT (JSON Web Tokens)
+*   **Framework:** FastAPI (Python)
+*   **Database:** SQLite (via SQLAlchemy) - Data is saved to `backend/eduly.db`.
+*   **Authentication:** JWT (JSON Web Tokens)
+*   **Data Validation:** Pydantic
 
-### How the Server Works (`server.ts`)
+## Folder Structure
 
-The `server.ts` file is the entry point for the entire application. It does two main things:
-1. **Serves the API**: It defines all the backend routes (`/api/v1/students`, `/api/v1/auth/login`, etc.) and handles the business logic.
-2. **Serves the Frontend**: It uses Vite middleware to serve the React frontend during development, and serves the static compiled `dist/` folder in production.
+All backend code is located in the `/backend` folder.
+*   `main.py`: Contains the FastAPI application, database models, schemas, and all API routes.
+*   `requirements.txt`: Lists all Python dependencies.
+*   `eduly.db`: The SQLite database file (created automatically on first run).
 
-This means you only need to run **one server** to host both the frontend and the backend.
+## How to Run Locally
 
-## Current Database Implementation (In-Memory)
+You will need to run the frontend and backend in **two separate terminal windows**.
 
-Currently, the application uses **In-Memory Arrays** to store data. This is perfect for prototyping and testing because it requires zero configuration.
-
-```typescript
-// Example of current in-memory storage in server.ts
-let mockStudents = [
-  { id: '1', name: 'Alisher Sadullayev', phone: '+998 90 123 45 67', ... },
-  // ...
-];
-```
-
-**Limitations of In-Memory Storage:**
-- Data is lost every time the server restarts.
-- Not suitable for production or multiple concurrent users.
-
-## How to Migrate to MySQL
-
-When you are ready to deploy this to production with a real database, you can easily swap the in-memory arrays with a MySQL database.
-
-### Step 1: Install MySQL Driver
-
-You will need to install a MySQL driver for Node.js. `mysql2` is highly recommended.
-
+### 1. Start the FastAPI Backend
+Open a new terminal in VS Code and run:
 ```bash
-npm install mysql2
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
 ```
+The backend will start on `http://localhost:8000`. You can view the interactive API documentation at `http://localhost:8000/docs`.
 
-### Step 2: Set up the Database Connection
-
-At the top of your `server.ts` file, configure the connection to your MySQL database using a connection string (URL).
-
-```typescript
-import mysql from 'mysql2/promise';
-
-// Create a connection pool
-const pool = mysql.createPool({
-  uri: process.env.DATABASE_URL || 'mysql://user:password@localhost:3306/eduly_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+### 2. Start the React Frontend
+Open a **second** terminal in VS Code and run:
+```bash
+npm install
+npm run dev
 ```
+The frontend will start on `http://localhost:5173` (or 3000). It is configured to automatically proxy all `/api` requests to the Python backend on port 8000.
 
-### Step 3: Replace Array Methods with SQL Queries
+## Default Login Credentials
+When you start the backend for the first time, it automatically creates an admin user:
+*   **Email:** `admin@edusaas.com`
+*   **Password:** `Admin1234!`
 
-You will need to update the route handlers in `server.ts` to use SQL queries instead of array methods (`.push()`, `.filter()`, etc.).
+## Migrating to PostgreSQL or MySQL
+Currently, the app uses SQLite (`sqlite:///./eduly.db`). To switch to a production database like PostgreSQL or MySQL:
 
-#### Example: Fetching Students (GET)
-
-**Current (In-Memory):**
-```typescript
-app.get('/api/v1/students', authenticateToken, (req, res) => {
-  res.json(mockStudents);
-});
-```
-
-**New (MySQL):**
-```typescript
-app.get('/api/v1/students', authenticateToken, async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT * FROM students');
-    res.json(rows);
-  } catch (error) {
-    res.status(500).json({ detail: 'Database error' });
-  }
-});
-```
-
-#### Example: Adding a Student (POST)
-
-**Current (In-Memory):**
-```typescript
-app.post('/api/v1/students', authenticateToken, (req, res) => {
-  const newStudent = { id: Math.random().toString(), ...req.body };
-  mockStudents.push(newStudent);
-  res.status(201).json(newStudent);
-});
-```
-
-**New (MySQL):**
-```typescript
-app.post('/api/v1/students', authenticateToken, async (req, res) => {
-  try {
-    const { name, phone, group_name, status, debt, gender, birthDate, address } = req.body;
-    
-    const [result] = await pool.query(
-      'INSERT INTO students (name, phone, group_name, status, debt, gender, birthDate, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, phone, group_name, status, debt, gender, birthDate, address]
-    );
-    
-    // Fetch the newly created student to return it
-    const [newStudent] = await pool.query('SELECT * FROM students WHERE id = ?', [(result as any).insertId]);
-    res.status(201).json(newStudent[0]);
-  } catch (error) {
-    res.status(500).json({ detail: 'Database error' });
-  }
-});
-```
-
-### Step 4: Create Your SQL Tables
-
-You will need to create the corresponding tables in your MySQL database. Here is an example schema for the students table:
-
-```sql
-CREATE TABLE students (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    phone VARCHAR(50),
-    group_name VARCHAR(100),
-    status VARCHAR(50),
-    debt INT DEFAULT 0,
-    gender VARCHAR(20),
-    birthDate DATE,
-    address TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-## Security Notes
-
-1. **JWT Secret**: The `JWT_SECRET` in `server.ts` is currently hardcoded with a fallback. In production, **always** set the `JWT_SECRET` environment variable to a long, random string.
-2. **SQL Injection**: Always use parameterized queries (the `?` syntax shown in the examples above) when interacting with MySQL. Never concatenate user input directly into SQL strings.
-3. **Passwords**: The current mock authentication checks plain text passwords. When migrating to a real database, you must hash passwords using a library like `bcrypt` before storing them, and compare hashes during login.
+1. Install the appropriate driver (e.g., `pip install psycopg2-binary` for Postgres or `pip install pymysql` for MySQL).
+2. Open `backend/main.py`.
+3. Change the `SQLALCHEMY_DATABASE_URL`:
+   ```python
+   # For PostgreSQL:
+   SQLALCHEMY_DATABASE_URL = "postgresql://user:password@localhost/dbname"
+   
+   # For MySQL:
+   SQLALCHEMY_DATABASE_URL = "mysql+pymysql://user:password@localhost/dbname"
+   ```
+4. Remove the `connect_args={"check_same_thread": False}` from the `create_engine` call (this is only needed for SQLite).
