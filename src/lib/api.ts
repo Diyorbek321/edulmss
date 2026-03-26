@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_URL = 'http://localhost:8000/api/v1';
+export const API_URL = '/api/v1';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -49,11 +49,13 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+      if (!refreshToken || refreshToken === 'mock_refresh_token') {
+        if (refreshToken !== 'mock_refresh_token') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

@@ -33,7 +33,8 @@ export function Login() {
     
     try {
       const response = await api.post('/auth/login', data);
-      const { access_token, refresh_token } = response.data;
+      const access_token = response.data.access_token;
+      const refresh_token = response.data.refresh_token;
       
       if (refresh_token) {
         localStorage.setItem('refresh_token', refresh_token);
@@ -43,8 +44,9 @@ export function Login() {
       const userResponse = await api.get('/auth/me', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
+      const userData = userResponse.data;
       
-      login(access_token, userResponse.data);
+      login(access_token, userData);
       navigate(from, { replace: true });
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 400) {

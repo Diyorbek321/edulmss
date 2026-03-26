@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { AIChatWidget } from './AIChatWidget';
 
 export const Layout = () => {
   return (
@@ -9,6 +10,7 @@ export const Layout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Outlet />
       </div>
+      <AIChatWidget />
     </div>
   );
 };
